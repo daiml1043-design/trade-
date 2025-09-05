@@ -1,266 +1,144 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dummy Trading Web</title>
-
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: url('https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=1950&q=80') no-repeat center center fixed;
-    background-size: cover;
-    margin: 0;
-    padding: 0;
-    color: white;
-}
-#loginBox, #createBox, #portfolioDiv, #addFunds, #liveSignals {
-    background: rgba(255,255,255,0.9);
-    color: black;
-    padding: 15px;
-    margin: 10px auto;
-    border-radius: 10px;
-    max-width: 400px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    text-align: center;
-}
-#liveSignals { max-height:200px; overflow-y:auto; }
-button { padding:8px 15px; margin:5px; cursor:pointer; }
-input { padding:5px; margin:5px; width:80%; }
-</style>
+  <title>Dummy Trading Web</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: url('https://images.unsplash.com/photo-1612832020590-458c267a0f5a?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      text-align: center;
+    }
+    input { margin: 5px; padding: 8px; width: 200px; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    #createDiv, #dashboard { display: none; }
+    #signals { margin-top: 20px; font-size: 20px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
+  <h1>Dummy Trading Web</h1>
 
-<!-- Login Screen -->
-<div id="loginScreen">
-  <div id="loginBox">
-    <h2>Login</h2>
-    <input type="text" id="loginInput" placeholder="Account Number or Name"><br>
-    <input type="password" id="passwordInput" placeholder="Password"><br>
-    <button onclick="login()">Login</button><br>
+  <!-- Login Form -->
+  <div id="loginDiv">
+    <input type="text" id="loginName" placeholder="Name or Account"><br>
+    <input type="password" id="loginPassword" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
     <button onclick="showCreateAccount()">Create New Account</button>
   </div>
-</div>
 
-<!-- Create Account Screen -->
-<div id="createAccountDiv" style="display:none;">
-  <div id="createBox">
-    <h2>Create Account</h2>
-    <input type="text" id="fullName" placeholder="Full Name"><br>
+  <!-- Create Account Form -->
+  <div id="createDiv">
+    <input type="text" id="newName" placeholder="Name"><br>
     <input type="password" id="newPassword" placeholder="Password"><br>
     <input type="text" id="accountNumber" placeholder="Account Number"><br>
-    <input type="text" id="otpInput" placeholder="Enter OTP"><br>
-    <button onclick="createAccount()">Create Account</button><br>
+    <input type="text" id="otp" placeholder="OTP (9999)"><br>
+    <button onclick="createAccount()">Create Account</button>
     <button onclick="showLogin()">Back to Login</button>
   </div>
-</div>
 
-<!-- Main Dashboard -->
-<div id="dashboard" style="display:none; text-align:center;">
-  <h1>Welcome to Dummy Trading Web</h1>
-  <h3>Balance: ₹<span id="balance">0</span></h3>
-
-  <div id="portfolioDiv">
-    <h2>Portfolio</h2>
-    <ul id="portfolioList"></ul>
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <h2>Welcome, <span id="userDisplay"></span></h2>
+    <h3>Live Signals</h3>
+    <div id="signals">Loading signals...</div>
+    <h3>Deposit Money (UPI)</h3>
+    <input type="number" id="upiAmount" placeholder="Amount"><br>
+    <button onclick="simulateUPI()">Pay via UPI</button><br>
+    <button onclick="logout()">Logout</button>
   </div>
 
-  <div id="addFunds">
-    <h2>Add Funds via UPI</h2>
-    <input type="text" id="upiId" placeholder="Enter UPI ID"><br>
-    <input type="number" id="amount" placeholder="Amount"><br>
-    <button onclick="addFunds()">Add Funds</button>
-  </div>
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDGdH6XkMXh6pfqgsUx83L-mj8gdHNES90",
+      authDomain: "application-b9db7.firebaseapp.com",
+      databaseURL: "https://application-b9db7-default-rtdb.firebaseio.com",
+      projectId: "application-b9db7",
+      storageBucket: "application-b9db7.appspot.com",
+      messagingSenderId: "599892319079",
+      appId: "1:599892319079:web:0741a03df8ab21633b2dc2",
+      measurementId: "G-ZQ6749L2HJ"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-  <div id="liveSignals">
-    <h2>Live Signals</h2>
-    <ul id="signalsList"></ul>
-  </div>
-
-  <button onclick="logout()">Logout</button>
-</div>
-
-<script>
-/* ================= Firebase Config ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyDGdH6XkMXh6pfqgsUx83L-mj8gdHNES90",
-  authDomain: "application-b9db7.firebaseapp.com",
-  databaseURL: "https://application-b9db7-default-rtdb.firebaseio.com",
-  projectId: "application-b9db7",
-  storageBucket: "application-b9db7.firebasestorage.app",
-  messagingSenderId: "599892319079",
-  appId: "1:599892319079:web:0741a03df8ab21633b2dc2",
-  measurementId: "G-ZQ6749L2HJ"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const database = firebase.database();
-
-/* =================== Variables =================== */
-let userId = null;
-let balance = 0;
-let portfolio = [];
-const coins = [
-  {name:"BTC", price:30000, history:[]},
-  {name:"ETH", price:2000, history:[]},
-  {name:"BNB", price:300, history:[]}
-];
-
-/* =================== Login / Create Account =================== */
-function showCreateAccount(){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('createAccountDiv').style.display='block';
-}
-function showLogin(){
-  document.getElementById('loginScreen').style.display='block';
-  document.getElementById('createAccountDiv').style.display='none';
-}
-
-function createAccount(){
-  const name = document.getElementById('fullName').value;
-  const password = document.getElementById('newPassword').value;
-  const account = document.getElementById('accountNumber').value;
-  const otp = document.getElementById('otpInput').value;
-
-  if(!name || !password || !account || !otp){
-    alert('Please fill all fields!');
-    return;
-  }
-  if(otp!=='9999'){ alert('Invalid OTP!'); return; }
-
-  // Use account as dummy email
-  const email = account+'@dummy.com';
-  auth.createUserWithEmailAndPassword(email,password)
-    .then(userCredential=>{
-      userId = userCredential.user.uid;
-      balance = 100000; portfolio=[];
-      database.ref('users/'+userId).set({
-        fullName: name,
-        accountNumber: account,
-        balance: balance,
-        portfolio: portfolio,
-        tradeHistory: []
-      });
-      loginSuccess(userId);
-    })
-    .catch(err=>alert('Error: '+err.message));
-}
-
-function login(){
-  const input = document.getElementById('loginInput').value;
-  const password = document.getElementById('passwordInput').value;
-  if(!input || !password){ alert('Enter both fields'); return; }
-
-  database.ref('users').once('value', snapshot=>{
-    let found=false;
-    snapshot.forEach(childSnap=>{
-      const user = childSnap.val();
-      if(user.accountNumber===input || user.fullName===input){
-        found=true;
-        const email = childSnap.key+'@dummy.com';
-        auth.signInWithEmailAndPassword(email,password)
-          .then(userCredential=>{
-            loginSuccess(userCredential.user.uid);
-          })
-          .catch(err=>alert('Wrong password!'));
-      }
-    });
-    if(!found) alert('User not found!');
-  });
-}
-
-function loginSuccess(uid){
-  userId = uid;
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('createAccountDiv').style.display='none';
-  document.getElementById('dashboard').style.display='block';
-  loadUserData();
-}
-
-/* ================= Portfolio ================= */
-function updatePortfolio(){
-  document.getElementById('balance').innerText = balance.toFixed(2);
-  const list = document.getElementById('portfolioList');
-  list.innerHTML='';
-  if(portfolio.length===0) list.innerHTML='<li>Portfolio Empty</li>';
-  else portfolio.forEach(c=>{
-    const li=document.createElement('li');
-    li.innerText=`${c.name} - ${c.amount} coins`;
-    list.appendChild(li);
-  });
-}
-
-/* ================= Firebase Data ================= */
-function saveUserData(){
-  database.ref('users/'+userId).update({
-    balance: balance,
-    portfolio: portfolio
-  });
-}
-
-function loadUserData(){
-  database.ref('users/'+userId).once('value', snapshot=>{
-    const data = snapshot.val();
-    if(data){
-      balance = data.balance || 100000;
-      portfolio = data.portfolio || [];
-      updatePortfolio();
+    // Show/hide forms
+    function showCreateAccount() {
+      document.getElementById("loginDiv").style.display = "none";
+      document.getElementById("createDiv").style.display = "block";
     }
-  });
-}
+    function showLogin() {
+      document.getElementById("createDiv").style.display = "none";
+      document.getElementById("loginDiv").style.display = "block";
+    }
 
-/* ================= Logout ================= */
-function logout(){
-  auth.signOut();
-  document.getElementById('dashboard').style.display='none';
-  document.getElementById('loginScreen').style.display='block';
-}
+    // Create account
+    function createAccount() {
+      const name = document.getElementById("newName").value;
+      const password = document.getElementById("newPassword").value;
+      const accNumber = document.getElementById("accountNumber").value;
+      const otp = document.getElementById("otp").value;
 
-/* ================= Add Funds via UPI ================= */
-function addFunds(){
-  const upi = document.getElementById('upiId').value;
-  const amt = parseFloat(document.getElementById('amount').value);
-  if(!upi){ alert('Enter UPI ID'); return; }
-  if(!amt || amt<=0){ alert('Enter valid amount'); return; }
-  balance+=amt;
-  updatePortfolio();
-  saveUserData();
-  alert(`₹${amt.toFixed(2)} added via UPI (${upi})`);
-  document.getElementById('upiId').value='';
-  document.getElementById('amount').value='';
-}
+      if (!name || !password || !accNumber || otp !== "9999") {
+        alert("All fields required and OTP must be 9999");
+        return;
+      }
 
-/* ================= Live Signals ================= */
-const signalsList = document.getElementById('signalsList');
-function generateSignals(){
-  coins.forEach(coin=>{
-    const last = coin.history[coin.history.length-1] || coin.price;
-    const prev = coin.history[coin.history.length-2] || coin.price;
-    if(prev && last>prev*1.01) addSignal(`📈 Buy Signal: ${coin.name} up to $${last.toFixed(2)}`);
-    else if(prev && last<prev*0.99) addSignal(`📉 Sell Signal: ${coin.name} down to $${last.toFixed(2)}`);
-  });
-}
-function addSignal(msg){
-  const li=document.createElement('li');
-  li.innerText=`${new Date().toLocaleTimeString()} - ${msg}`;
-  signalsList.prepend(li);
-  if(signalsList.children.length>50) signalsList.removeChild(signalsList.lastChild);
-}
+      database.ref("users/" + accNumber).set({
+        name: name,
+        password: password,
+        accountNumber: accNumber
+      }).then(() => {
+        alert("Account Created!");
+        showLogin();
+      });
+    }
 
-/* ================= Coin Price Simulation ================= */
-function updateCoinPrices(){
-  coins.forEach(coin=>{
-    const change=(Math.random()-0.5)*coin.price*0.02; // ±1%
-    coin.price+=change;
-    coin.history.push(coin.price);
-  });
-}
-setInterval(()=>{ updateCoinPrices(); generateSignals(); },2000);
-</script>
+    // Login (name or account)
+    function login() {
+      const loginValue = document.getElementById("loginName").value;
+      const password = document.getElementById("loginPassword").value;
+
+      database.ref("users").get().then(snapshot => {
+        let loggedIn = false;
+        snapshot.forEach(userSnap => {
+          const user = userSnap.val();
+          if ((user.name === loginValue || user.accountNumber === loginValue) && user.password === password) {
+            loggedIn = true;
+            document.getElementById("userDisplay").innerText = user.name;
+            document.getElementById("loginDiv").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            startSignals();
+          }
+        });
+        if (!loggedIn) alert("Invalid credentials");
+      });
+    }
+
+    // Live signals simulation
+    function startSignals() {
+      const signalText = document.getElementById("signals");
+      setInterval(() => {
+        const signals = ["BUY BTC", "SELL ETH", "HOLD XRP", "BUY DOGE"];
+        signalText.innerText = signals[Math.floor(Math.random() * signals.length)] + " at " + new Date().toLocaleTimeString();
+      }, 2000);
+    }
+
+    // UPI simulation
+    function simulateUPI() {
+      const amount = document.getElementById("upiAmount").value;
+      if (!amount) return alert("Enter amount");
+      alert("UPI Payment of ₹" + amount + " successful (simulation)");
+    }
+
+    // Logout
+    function logout() {
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("loginDiv").style.display = "block";
+    }
+  </script>
 </body>
 </html>
